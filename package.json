@@ -1,0 +1,16 @@
+{
+  "name": "togii",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "https://github.com/LikeTheDoge/togII.git",
+  "author": "likeadoge <like_the_doge@outlook.com>",
+  "license": "MIT",
+  "scripts": {
+    "init-pkg": "node ./script/entry/init.js pkg",
+    "init-app": "node ./script/entry/init.js app"
+  },
+  "devDependencies": {
+    "fs-extra": "^10.1.0",
+    "lerna": "^4.0.0"
+  }
+}
