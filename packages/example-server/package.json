@@ -1,5 +1,5 @@
 {
-  "name": "togii-reactive",
+  "name": "example-server",
   "version": "1.0.0",
   "main": "lib/cjs/index.js",
   "module": "lib/mjs/index.js",
@@ -14,19 +14,28 @@
     "/types"
   ],
   "scripts": {
+    "dev": "node ./script/dev.js",
     "test": "jest",
     "test-c": "jest --coverage",
-    "build": "tsc -p tsconfig-mjs.json && tsc -p tsconfig-cjs.json"
+    "build": "tsc -p tsconfig-mjs.json && tsc -p tsconfig-cjs.json",
+    "serve": "node ./lib/cjs/index.js"
   },
   "devDependencies": {
     "@types/babel-core": "^6.25.7",
     "@types/babel__core": "^7.1.16",
     "@types/jest": "^27.5.0",
-    "@types/object-hash": "^2.2.1",
     "@types/react": "^17.0.37",
+    "chokidar": "^3.5.3",
     "jest": "^27.0.3",
+    "terminate": "^2.5.0",
     "ts-jest": "^27.0.1",
     "typescript": "4.3.2",
     "vite": "^2.3.4"
+  },
+  "dependencies": {
+    "@types/ws": "^8.5.3",
+    "togii-reactive": "^1.0.0",
+    "togii-server-connect": "^1.0.0",
+    "ws": "^8.8.0"
   }
 }

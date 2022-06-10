@@ -10,14 +10,18 @@ const svg = `
 document.body.innerHTML = `<h1> ${svg} Hello World ! <b id="time"></b></h1> `
 
 
-const time = new ValueReceiver('')
+const time = new ValueReceiver('server-time','')
 
-time.value.attach(R.effect<string>(time => {
-    (document.querySelector('#time') as any).innerHTML = time
+time.key = 'server-time'
+
+time.value.attach(R.effect<string>(t => {
+    console.log(time);
+    (document.querySelector('#time') as any).innerHTML = t
 }))
 
 
 new ClientConnect({
-    ws: new WebSocket('ws://119.96.83.86:2022/eco-online-edit-server/onLineWebSocket/9/'),
+    ws: new WebSocket('ws://localhost:8080/'),
     receivers: [time]
 })
+

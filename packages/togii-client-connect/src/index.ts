@@ -26,14 +26,14 @@ export class ClientConnect {
             const data = message.data
             if (typeof data !== 'string')
                 return // todo: 异常处理
-            const { event, playload } = JSON.parse(data.toString())
+            const { event, payload } = JSON.parse(data.toString())
             const listeners = [
                 this.listener,
                 ...this.receivers.map(v => v.listener)
             ]
             listeners.forEach(listener => {
                 const func = listener.get(event)
-                if (func) func(playload)
+                if (func) func(payload)
             })
         }
         this.status = ClientConnectStatus.created
@@ -53,6 +53,7 @@ export class ClientConnect {
         this.go('regist', this.receivers.flatMap(v => v.watchIds()))
         this.waitDone.forEach(resolve => resolve(this))
         this.status = ClientConnectStatus.registed
+        this.receivers.forEach(v=>v.install(this))
     }
 
     private on(event: string, fn: (payload: any) => void) {
@@ -112,8 +113,9 @@ export class ValueReceiver<T> extends Receiver {
     name: string = ''
     value: Mut<T>
 
-    constructor(def: T) {
+    constructor(name:string, def: T) {
         super()
+        this.name = name
         this.value = R.val<T>(def)
     }
 
@@ -122,8 +124,9 @@ export class ValueReceiver<T> extends Receiver {
     }
 
 
-    install(conect: ClientConnect) {
-        this.connect = conect
+    install(connect: ClientConnect) {
+        console.log('install',connect)
+        this.connect = connect
         this.on(`changed:${this.name}`, () => { this.onchange(this) })
         this.on(`val:${this.name}`, (val: T) => { this.value.update(val) })
     }
