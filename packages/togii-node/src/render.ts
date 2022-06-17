@@ -139,4 +139,5 @@ export class RenderRoot {
         this.unlink(node)
         this.insert(node, pos)
     }
+    
 }

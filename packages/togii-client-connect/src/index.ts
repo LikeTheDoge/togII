@@ -128,7 +128,7 @@ export class ValueReceiver<T> extends Receiver {
         console.log('install',connect)
         this.connect = connect
         this.on(`changed:${this.name}`, () => { this.onchange(this) })
-        this.on(`val:${this.name}`, (val: T) => { this.value.update(val) })
+        this.on(`val:${this.name}`, ({value}: {value:T}) => { this.value.update(value) })
     }
 
     update() {
