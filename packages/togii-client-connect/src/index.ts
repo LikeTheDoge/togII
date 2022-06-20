@@ -53,7 +53,7 @@ export class ClientConnect {
         this.go('regist', this.receivers.flatMap(v => v.watchIds()))
         this.waitDone.forEach(resolve => resolve(this))
         this.status = ClientConnectStatus.registed
-        this.receivers.forEach(v=>v.install(this))
+        this.receivers.forEach(v => v.install(this))
     }
 
     private on(event: string, fn: (payload: any) => void) {
@@ -113,7 +113,7 @@ export class ValueReceiver<T> extends Receiver {
     name: string = ''
     value: Mut<T>
 
-    constructor(name:string, def: T) {
+    constructor(name: string, def: T) {
         super()
         this.name = name
         this.value = R.val<T>(def)
@@ -125,10 +125,10 @@ export class ValueReceiver<T> extends Receiver {
 
 
     install(connect: ClientConnect) {
-        console.log('install',connect)
+        console.log('install', connect)
         this.connect = connect
         this.on(`changed:${this.name}`, () => { this.onchange(this) })
-        this.on(`val:${this.name}`, ({value}: {value:T}) => { this.value.update(value) })
+        this.on(`val:${this.name}`, ({ value }: { value: T }) => { this.value.update(value) })
     }
 
     update() {
@@ -165,4 +165,55 @@ export class UpdateReceiver<T> extends Receiver {
     }
 
     onupdate: (_this: UpdateReceiver<T>, list: T[]) => void = () => { }
+}
+
+export class ValueUpdateReceiver<C, T, S> extends Receiver {
+
+    name: string = ''
+    version: string = ''
+    value: Mut<C>
+
+    onInit: (json: T, old: C) => C
+    onUpdate: (update: S, old: C) => C
+
+    constructor(name: string, def: C, onInit: (json: T, old: C) => C, onUpdate: (update: S, old: C) => C) {
+        super()
+        this.name = name
+        this.value = R.val<C>(def)
+        this.onInit = onInit
+        this.onUpdate = onUpdate
+    }
+
+    watchIds() {
+        return [`receive-value&update:${this.name}`]
+    }
+
+    install(connect: ClientConnect) {
+        console.log('install', connect)
+        this.connect = connect
+        this.on(`changed:${this.name}`, () => {
+            this.send(`from:${this.name}`, { version: this.version })
+        })
+
+        this.on(`updation:${this.name}`, ({ from, to, updation }: { from: string, to: string, updation: S[] }) => {
+            if (this.version === to) return
+            if (this.version !== from) return this.send(`get:${this.name}`, null)
+            this.value.update(updation.reduce((old: C, s: S) => this.onUpdate(s, old), this.value.val()))
+            this.version = to
+            this.send(`done:${this.name}`, { version: this.version })
+        })
+
+        this.on(`val:${this.name}`, ({ value, version }: { value: T, version: string }) => {
+            this.value.update(this.onInit(value, this.value.val()))
+            this.version = version
+        })
+    }
+
+    valueUpdate() {
+        this.send(`get:${this.name}`, null)
+    }
+
+    onchange: (_this: ValueReceiver<T>) => void = (_this) => {
+        _this.update()
+    }
 }

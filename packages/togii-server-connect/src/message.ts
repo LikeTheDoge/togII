@@ -1,4 +1,4 @@
-import { Effect, R, Ref,Mut } from "togii-reactive"
+import { Effect, R, Ref, Mut } from "togii-reactive"
 import { ConnectStatus, ServerConnection } from "./connect"
 
 export abstract class Transporter {
@@ -6,7 +6,6 @@ export abstract class Transporter {
     connections: ServerConnection[] = []
     attach(connect: ServerConnection): void { console.log(connect) }
     abstract isWatch(id: string): boolean
-
     bind(connect: ServerConnection) {
         if (connect.status !== ConnectStatus.Registed)
             throw new Error('bind: connect is not complete!')
@@ -17,7 +16,6 @@ export abstract class Transporter {
         }
     }
 }
-
 
 export interface Value<T> {
     version: string
@@ -111,24 +109,28 @@ export class UpdateTransporter<T> extends Transporter {
 
 }
 
-
-export class ValueUpdateTransporter<T, S> extends Transporter {
+export class ValueUpdateTransporter<T, S, V extends Value<T> = Value<T>, U extends Update<S> = Update<S>>
+    extends Transporter {
 
     valueTrans: ValueTransporter<T>
     updateTrans: UpdateTransporter<S>
 
     name: string
-    val: Mut<Value<T>>
+    val: Mut<V>
 
-    constructor(name: string, def: Value<T>) {
+    constructor(name: string, def: V) {
         super()
         this.name = name
         this.val = R.val(def)
         this.valueTrans = new ValueTransporter<T>(name, this.val)
         this.updateTrans = new UpdateTransporter<S>(name)
 
+        this.valueTrans.connections = this.connections
+        this.updateTrans.connections = this.connections
+
         const version = this.val.val().version
         this.updateTrans.update({ version, transportUpdate() { return null as any } })
+        
     }
 
     isWatch(id: string) {
@@ -147,9 +149,9 @@ export class ValueUpdateTransporter<T, S> extends Transporter {
         this.updateTrans.attach(connect)
     }
 
-    update(fn: (oldone: Value<T>) => [Value<T>, Update<S>]) {
-        const [v,u] = fn(this.val.val())
-        if(v.version !== u.version) throw new Error('version is wrong!')
+    update(fn: (oldone: V) => [V, U]) {
+        const [v, u] = fn(this.val.val())
+        if (v.version !== u.version) throw new Error('version is wrong!')
         this.val.update(v)
         this.updateTrans.update(u)
     }
