@@ -19,7 +19,6 @@ export abstract class RenderNode {
     root: RenderRoot
     nodeId: string = Math.random().toString()
     constructor(root: RenderRoot, id?: string) {
-        console.log(id)
         this.root = root
         this.nodeId = id || this.nodeId
         if (this.root.nodes.has(this.nodeId)) {
@@ -74,9 +73,9 @@ export class RenderRoot {
             throw new Error('parse: node options error')
 
         if (option.type === RenderNodeType.ElementNode) {
-            const { id, tag = 'div', attr = {}, style = {}, children = [] } = option
+            const { id, tag = 'div', attr = {}, style = {} } = option
             return Object.assign(new RenderElementNode(this, id), {
-                tag, attr, style, children: children.map((v: any) => this.prase(v))
+                tag, attr, style
             })
         }
         if (option.type === RenderNodeType.TextNode) {
@@ -114,9 +113,7 @@ export class RenderRoot {
             if (!this.nodes.has(pos.parent))
                 throw new Error('error parent id !!!')
             const pid = pos.parent
-            this.childrens.set(pid, (this.childrens.get(pid) || [])
-                .flatMap(v => v === pos.before ? [node.nodeId, v] : [v])
-            )
+            this.childrens.set(pid, (this.childrens.get(pid) || []).concat([node.nodeId]))
             this.parent.set(node.nodeId, pid)
             this.nodes.set(node.nodeId, node)
         }

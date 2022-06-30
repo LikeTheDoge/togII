@@ -45,77 +45,75 @@ test('element', () => {
     expect(node2.tag).toBe('div')
     expect(node2.style.color).toBe('green')
     expect(node2.attr.title).toBe('!')
-
+    
     expect((root.childrens.get(node0.nodeId) || []).find(id => id === '1'))
-        .toBe(node1)
+        .toBe('1')
 
     expect((root.childrens.get(node0.nodeId) || []).find(id => id === '2'))
-        .toBe(node2)
+        .toBe('2')
 });
 
-// test('insert & destory & cache', () => {
-//     const root = new RenderRoot()
-//     const parentId = root[RenderOpCode.insert](
-//         { tag: 'div', type: RenderNodeType.ElementNode }
-//     )
+test('insert & destory & cache', () => {
+    const root = new RenderRoot()
+    const parentId = root[RenderOpCode.insert](
+        { tag: 'div', type: RenderNodeType.ElementNode }
+    )
 
-//     expect(root.roots.find(id => id === parentId)).toBe(parentId)
+    expect(root.roots.find(id => id === parentId)).toBe(parentId)
 
-//     expect(() => {
-//         root[RenderOpCode.insert](
-//             { id: parentId, type: RenderNodeType.ElementNode }
-//         )
-//     }).toThrow(Error)
+    expect(() => {
+        root[RenderOpCode.insert](
+            { id: parentId, type: RenderNodeType.ElementNode }
+        )
+    }).toThrow(Error)
 
-//     expect(() => {
-//         root[RenderOpCode.insert](
-//             { tag: 'div' }
-//         )
-//     }).toThrow(Error)
+    expect(() => {
+        root[RenderOpCode.insert](
+            { tag: 'div' }
+        )
+    }).toThrow(Error)
 
-//     const childId0 = root[RenderOpCode.insert](
-//         { text: 'world !', type: RenderNodeType.TextNode },
-//         { parent: parentId }
-//     )
-//     console.log('children',childId0)
-//     const childNode0 = root.nodes.get(childId0)
+    const childId0 = root[RenderOpCode.insert](
+        { text: 'world !', type: RenderNodeType.TextNode },
+        { parent: parentId }
+    )
 
-//     expect((root.childrens.get(parentId) || []).find(id => id === childId0)).toBe(childId0)
+    expect((root.childrens.get(parentId) || []).find(id => id === childId0)).toBe(childId0)
 
-//     const childId1 = root[RenderOpCode.insert](
-//         { text: 'hello ', type: RenderNodeType.TextNode },
-//         { before: childId0 }
-//     )
+    const childId1 = root[RenderOpCode.insert](
+        { text: 'hello ', type: RenderNodeType.TextNode },
+        { before: childId0 }
+    )
 
-//     expect(
-//         (root.childrens.get(parentId) || []).findIndex(id => id === childId0)
-//         - (root.childrens.get(parentId) || []).findIndex(id => id === childId1)
-//     ).toBe(1)
+    expect(
+        (root.childrens.get(parentId) || []).findIndex(id => id === childId0)
+        - (root.childrens.get(parentId) || []).findIndex(id => id === childId1)
+    ).toBe(1)
 
 
-//     expect(() => {
-//         root[RenderOpCode.insert](
-//             { text: 'hello ', type: RenderNodeType.TextNode },
-//             { parent: 'childId0' }
-//         )
-//     }).toThrow(Error)
+    expect(() => {
+        root[RenderOpCode.insert](
+            { text: 'hello ', type: RenderNodeType.TextNode },
+            { parent: 'childId0' }
+        )
+    }).toThrow(Error)
 
-//     root[RenderOpCode.cache](childId0)
+    root[RenderOpCode.cache](childId0)
 
-//     expect((root.childrens.get(parentId) || []).findIndex(id => id === childId0)).toBe(-1)
-//     expect(root.cache.find(id => id === childId0)).toBe(childNode0)
+    expect((root.childrens.get(parentId) || []).findIndex(id => id === childId0)).toBe(-1)
+    expect(root.cache.find(id => id === childId0)).toBe(childId0)
 
-//     root[RenderOpCode.destory](parentId)
-//     expect(root.nodes.get(parentId)).toBeUndefined()
-//     expect(root.nodes.get(childId1)).toBeUndefined()
-//     expect(root.nodes.get(childId0)).toBeDefined()
+    root[RenderOpCode.destory](parentId)
+    expect(root.nodes.get(parentId)).toBeUndefined()
+    expect(root.nodes.get(childId1)).toBeUndefined()
+    expect(root.nodes.get(childId0)).toBeDefined()
 
-//     expect(() => {
-//         root[RenderOpCode.move](parentId)
-//     }).toThrow(Error)
+    expect(() => {
+        root[RenderOpCode.move](parentId)
+    }).toThrow(Error)
 
-//     root[RenderOpCode.move](childId0)
-//     expect(root.cache.find(id => id === childId0)).toBeUndefined()
-//     expect(root.roots.find(id => id === childId0)).toBeDefined()
+    root[RenderOpCode.move](childId0)
+    expect(root.cache.find(id => id === childId0)).toBeUndefined()
+    expect(root.roots.find(id => id === childId0)).toBeDefined()
 
-// })
+})
