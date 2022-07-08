@@ -9,7 +9,8 @@ export enum RenderOpCode {
     cache = '_cache_',
     move = '_move_',
     destory = '_destory_',
-    init = '_init_'
+    init = '_init_',
+    update = '_update_'
 }
 
 export abstract class RenderNode {
@@ -39,7 +40,6 @@ export class RenderElementNode extends RenderNode {
     tag: string = 'div'
     attr: { [key: string]: string } = {}
     style: Partial<CSSStyleDeclaration> = {}
-    // children: RenderNode[] = []
 }
 
 type RenderNodeOption = {
@@ -55,6 +55,61 @@ type RenderNodeOption = {
     children: RenderNodeOption[]
 }
 
+
+export class NodeOption {
+    id: string = Math.random().toString()
+    text: string = ''
+    tag: string = 'div'
+    type: RenderNodeType = RenderNodeType.TextNode
+    children: NodeOption[] = []
+
+    attr: { [key: string]: string } = {}
+    style: Partial<CSSStyleDeclaration> = {}
+
+    static text(text: string, op: { id?: string } = {}) {
+        return new NodeOption({ text, ...op, type: RenderNodeType.TextNode })
+    }
+
+    static element(tag: string, op: {
+        id?: string,
+        tag?: string,
+        type?: RenderNodeType,
+        children?: NodeOption[],
+        attr?: {
+            [key: string]: string,
+        }
+        style?: Partial<CSSStyleDeclaration>
+    } = {}) {
+        return new NodeOption({ tag, ...op, type: RenderNodeType.ElementNode })
+    }
+
+    constructor(option: {
+        id?: string,
+        text?: string,
+        tag?: string,
+        type?: RenderNodeType,
+        children?: NodeOption[],
+        attr?: {
+            [key: string]: string,
+        }
+        style?: Partial<CSSStyleDeclaration>
+    }) {
+        Object.assign(this, option)
+    }
+
+    append(...list: NodeOption[]) {
+        this.children = this.children.concat(list)
+        return this
+    }
+
+    build(): RenderNodeOption {
+        const { id, text, tag, type, children, attr, style } = this
+        return { id, text, tag, type, attr, style, children: children.map(v => v.build()) }
+    }
+}
+
+
+
 export class RenderRoot {
     nodes: Map<string, RenderNode> = new Map()
     parent: Map<string, string> = new Map()
@@ -62,13 +117,18 @@ export class RenderRoot {
     roots: string[] = []
     cache: string[] = []
 
-    private clear() {
+    protected get(nodeId: string) {
+        const node = this.nodes.get(nodeId)
+        if (!node) throw new Error('remove: node is not found!!!')
+        return node
+    }
+    protected clear() {
         this.nodes.clear()
         this.childrens.clear()
         this.roots = []
         this.cache = []
     }
-    private prase(option: RenderNodeOption): RenderNode {
+    protected prase(option: RenderNodeOption): RenderNode {
         if (!option || typeof option !== 'object')
             throw new Error('parse: node options error')
 
@@ -85,13 +145,8 @@ export class RenderRoot {
 
         throw new Error('parse: node type error')
     }
-    private get(nodeId: string) {
-        const node = this.nodes.get(nodeId)
-        if (!node) throw new Error('remove: node is not found!!!')
-        return node
-    }
     // 将节点插入 node 树中
-    private insert(node: RenderNode, pos: { before?: string, parent?: string }) {
+    protected insert(node: RenderNode, pos: { before?: string, parent?: string }) {
         if (pos.before) {
             if (!this.nodes.has(pos.before))
                 throw new Error('error before id !!!')
@@ -121,10 +176,9 @@ export class RenderRoot {
             this.roots.push(node.nodeId)
             this.nodes.set(node.nodeId, node)
         }
-        return node
     }
     // 将节点从 node 树中取出
-    private unlink(node: RenderNode) {
+    protected unlink(node: RenderNode) {
         // 从 node 树中取出 node
         const pid = this.parent.get(node.nodeId)
         if (pid) {
@@ -148,19 +202,18 @@ export class RenderRoot {
     }
     [RenderOpCode.insert](option: any, pos: { before?: string, parent?: string } = {}) {
 
-        const insertElement = (option: RenderNodeOption, pos: { before?: string, parent?: string } = {}) => {
+        const insert_element = (option: RenderNodeOption, pos: { before?: string, parent?: string } = {}) => {
             const ele = this.prase(option)
             this.insert(ele, pos)
             if (option.type == RenderNodeType.ElementNode) {
-                (option.children || []).forEach(op => insertElement(op, { parent: ele.nodeId }))
+                (option.children || []).forEach(op => insert_element(op, { parent: ele.nodeId }))
             }
             return ele
         }
 
-        return insertElement(option, pos).nodeId
+        return insert_element(option, pos).nodeId
 
     }
-
     [RenderOpCode.destory](nodeId: string) {
         const node = this.get(nodeId)
         this.unlink(node)
@@ -169,12 +222,9 @@ export class RenderRoot {
         if (children)
             children.forEach(v => this[RenderOpCode.destory](v))
     }
-
     [RenderOpCode.cache](nodeId: string) {
         const node = this.get(nodeId)
-
         this.unlink(node)
-
         this.cache = this.cache.concat(nodeId)
     }
     [RenderOpCode.move](nodeId: string, pos: { before?: string, parent?: string } = {}) {
@@ -182,4 +232,80 @@ export class RenderRoot {
         this.unlink(node)
         this.insert(node, pos)
     }
+    [RenderOpCode.update](option: any) {
+        const node = this.prase(option)
+        if (!this.nodes.has(node.nodeId))
+            throw new Error('update: node is not exist!')
+        this.nodes.set(node.nodeId, node)
+    }
+}
+
+export class RenderRootClient extends RenderRoot {
+    static document = globalThis.document
+    private realNodes: WeakMap<RenderNode, Node> = new WeakMap()
+    private container: Element
+
+    constructor(container: Element) {
+        super()
+        this.container = container
+    }
+    protected clear() {
+        super.clear()
+        this.realNodes = new WeakMap()
+        const children = Array.from(this.container.childNodes)
+        children.forEach(child => this.container.removeChild(child))
+    }
+    protected prase(option: RenderNodeOption) {
+        const node = super.prase(option)
+        if (node instanceof RenderTextNode) {
+            const real = RenderRootClient.document.createTextNode(node.text)
+            this.realNodes.set(node, real)
+        } else if (node instanceof RenderElementNode) {
+            const real = RenderRootClient.document.createElement(node.tag)
+            Object.assign(real.style, node.style)
+            Object.entries(node.attr).forEach(([key, value]) => {
+                real.setAttribute(key, value)
+            })
+            this.realNodes.set(node, real)
+        }
+        return node
+    }
+    protected unlink(node: RenderNode) {
+        super.unlink(node)
+        const real = this.realNodes.get(node)
+        if (!real)
+            throw new Error('unlink: real dom is not found!!!')
+        const parent = real.parentNode
+
+        if (parent) {
+            parent.removeChild(real)
+        }
+    }
+    protected insert(node: RenderNode, pos: { before?: string, parent?: string }) {
+        super.insert(node, pos)
+
+        const real = this.realNodes.get(node)
+        if (!real)
+            throw new Error('insert: real dom is not found')
+
+        const parent_id = this.parent.get(node.nodeId)
+        const is_root = this.roots.findIndex(id => id === node.nodeId) >= 0
+        const parent_childrens = parent_id ? this.childrens.get(parent_id)
+            : is_root ? this.roots
+                : undefined
+
+        const parent_real = parent_id
+            ? this.realNodes.get(this.get(parent_id))
+            : this.container
+
+        if (!parent_real || !parent_childrens || (parent_childrens.findIndex(id => id === node.nodeId) < 0))
+            throw new Error('insert: parent not found')
+
+        const next_id = parent_childrens.find((_, i) => parent_childrens[i - 1] === node.nodeId)
+        const next_real = next_id ? this.realNodes.get(this.get(next_id)) : null
+
+        parent_real.insertBefore(real, next_real || null)
+
+    }
+    
 }
