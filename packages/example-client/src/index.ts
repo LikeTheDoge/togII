@@ -1,5 +1,5 @@
 import { ClientConnect, ValueReceiver, ValueUpdateReceiver } from 'togii-client-connect'
-import { RenderRootClient, RenderOpCode,NodeOption } from 'togii-node'
+import { RenderRootClient, RenderOpCode, NodeOptionBuilder } from 'togii-node'
 import { R } from 'togii-reactive'
 
 const svg = `
@@ -49,15 +49,15 @@ const cntr = document.querySelector('#app')
 if (cntr) {
     const root = new RenderRootClient(cntr)
     root[RenderOpCode.init]([
-        NodeOption.element('div',{
+        NodeOptionBuilder.element('div',{
             id:'2',
             style:{color:'red'}
         })
-        .append(NodeOption.text('world !'))
+        .append(NodeOptionBuilder.text('world !'))
         .build()
     ])
 
-    root[RenderOpCode.insert](NodeOption.text('hello '),{
+    root[RenderOpCode.insert](NodeOptionBuilder.text('hello '),{
         before:'2'
     })
 

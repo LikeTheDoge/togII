@@ -34,6 +34,7 @@
   },
   "dependencies": {
     "@types/ws": "^8.5.3",
+    "togii-node": "^1.0.0",
     "togii-reactive": "^1.0.0",
     "togii-server-connect": "^1.0.0",
     "ws": "^8.8.0"

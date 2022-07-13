@@ -3,16 +3,6 @@ export enum RenderNodeType {
     TextNode, ElementNode,
 }
 
-// 修改节点的操作
-export enum RenderOpCode {
-    insert = '_insert_',
-    cache = '_cache_',
-    move = '_move_',
-    destory = '_destory_',
-    init = '_init_',
-    update = '_update_'
-}
-
 export abstract class RenderNode {
     static nodeId = () => Math.random().toString()
     abstract type: RenderNodeType
@@ -27,22 +17,31 @@ export abstract class RenderNode {
         }
         this.root.nodes.set(this.nodeId, this)
     }
+    abstract option(): RenderNodeOption
 }
 
 export class RenderTextNode extends RenderNode {
-    type = RenderNodeType.TextNode
+    type: RenderNodeType.TextNode = RenderNodeType.TextNode
     text: string = ''
-
+    option() {
+        const { nodeId: id, type, text } = this
+        return { id, type, text }
+    }
 }
 
 export class RenderElementNode extends RenderNode {
-    type = RenderNodeType.ElementNode
+    type: RenderNodeType.ElementNode = RenderNodeType.ElementNode
     tag: string = 'div'
     attr: { [key: string]: string } = {}
     style: Partial<CSSStyleDeclaration> = {}
+
+    option() {
+        const { nodeId: id, type, tag, attr, style } = this
+        return { id, type, tag, attr, style, children: [] }
+    }
 }
 
-type RenderNodeOption = {
+export type RenderNodeOption = {
     id: string,
     type: RenderNodeType.TextNode,
     text: string,
@@ -56,31 +55,31 @@ type RenderNodeOption = {
 }
 
 
-export class NodeOption {
+export class NodeOptionBuilder {
     id: string = Math.random().toString()
     text: string = ''
     tag: string = 'div'
     type: RenderNodeType = RenderNodeType.TextNode
-    children: NodeOption[] = []
+    children: NodeOptionBuilder[] = []
 
     attr: { [key: string]: string } = {}
     style: Partial<CSSStyleDeclaration> = {}
 
     static text(text: string, op: { id?: string } = {}) {
-        return new NodeOption({ text, ...op, type: RenderNodeType.TextNode })
+        return new NodeOptionBuilder({ text, ...op, type: RenderNodeType.TextNode })
     }
 
     static element(tag: string, op: {
         id?: string,
         tag?: string,
         type?: RenderNodeType,
-        children?: NodeOption[],
+        children?: NodeOptionBuilder[],
         attr?: {
             [key: string]: string,
         }
         style?: Partial<CSSStyleDeclaration>
     } = {}) {
-        return new NodeOption({ tag, ...op, type: RenderNodeType.ElementNode })
+        return new NodeOptionBuilder({ tag, ...op, type: RenderNodeType.ElementNode })
     }
 
     constructor(option: {
@@ -88,7 +87,7 @@ export class NodeOption {
         text?: string,
         tag?: string,
         type?: RenderNodeType,
-        children?: NodeOption[],
+        children?: NodeOptionBuilder[],
         attr?: {
             [key: string]: string,
         }
@@ -97,7 +96,7 @@ export class NodeOption {
         Object.assign(this, option)
     }
 
-    append(...list: NodeOption[]) {
+    append(...list: NodeOptionBuilder[]) {
         this.children = this.children.concat(list)
         return this
     }
@@ -108,6 +107,30 @@ export class NodeOption {
     }
 }
 
+
+// 修改节点的操作
+export enum RenderOpCode {
+    insert = '_insert_',
+    cache = '_cache_',
+    move = '_move_',
+    destory = '_destory_',
+    init = '_init_',
+    update = '_update_'
+}
+
+export type RenderOpInput<T extends RenderOpCode> =
+    T extends RenderOpCode.init ? [RenderNodeOption[]] :
+    T extends RenderOpCode.insert ? [RenderNodeOption, { before?: string, parent?: string }] :
+    T extends RenderOpCode.cache ? [string] :
+    T extends RenderOpCode.move ? [string, { before?: string, parent?: string }] :
+    T extends RenderOpCode.destory ? [string] :
+    T extends RenderOpCode.update ? [RenderNodeOption]
+    : never
+
+export type RenderOpInstrction =
+    [RenderOpCode.init, ...RenderOpInput<RenderOpCode.init>]
+    | [RenderOpCode.init, ...RenderOpInput<RenderOpCode.init>]
+    | []
 
 
 export class RenderRoot {
@@ -189,7 +212,7 @@ export class RenderRoot {
             this.cache = this.cache.filter(id => id !== node.nodeId)
         }
     }
-    [RenderOpCode.init](options: any[]) {
+    [RenderOpCode.init](options: RenderNodeOption[]) {
         this.clear()
         const insertElement = (option: RenderNodeOption, parent?: string) => {
             const ele = this.prase(option)
@@ -200,7 +223,7 @@ export class RenderRoot {
         }
         options.forEach(op => insertElement(op))
     }
-    [RenderOpCode.insert](option: any, pos: { before?: string, parent?: string } = {}) {
+    [RenderOpCode.insert](...[option, pos]: RenderOpInput<RenderOpCode.insert>) {
 
         const insert_element = (option: RenderNodeOption, pos: { before?: string, parent?: string } = {}) => {
             const ele = this.prase(option)
@@ -214,7 +237,7 @@ export class RenderRoot {
         return insert_element(option, pos).nodeId
 
     }
-    [RenderOpCode.destory](nodeId: string) {
+    [RenderOpCode.destory](...[nodeId]: RenderOpInput<RenderOpCode.destory>) {
         const node = this.get(nodeId)
         this.unlink(node)
         this.nodes.delete(node.nodeId)
@@ -222,17 +245,17 @@ export class RenderRoot {
         if (children)
             children.forEach(v => this[RenderOpCode.destory](v))
     }
-    [RenderOpCode.cache](nodeId: string) {
+    [RenderOpCode.cache](...[nodeId]: RenderOpInput<RenderOpCode.cache>) {
         const node = this.get(nodeId)
         this.unlink(node)
         this.cache = this.cache.concat(nodeId)
     }
-    [RenderOpCode.move](nodeId: string, pos: { before?: string, parent?: string } = {}) {
+    [RenderOpCode.move](...[nodeId, pos]: RenderOpInput<RenderOpCode.move>) {
         const node = this.get(nodeId)
         this.unlink(node)
         this.insert(node, pos)
     }
-    [RenderOpCode.update](option: any) {
+    [RenderOpCode.update](...[option]: RenderOpInput<RenderOpCode.update>) {
         const node = this.prase(option)
         if (!this.nodes.has(node.nodeId))
             throw new Error('update: node is not exist!')
@@ -307,5 +330,5 @@ export class RenderRootClient extends RenderRoot {
         parent_real.insertBefore(real, next_real || null)
 
     }
-    
+
 }

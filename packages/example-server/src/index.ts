@@ -1,5 +1,6 @@
 import { R } from 'togii-reactive'
 import { Update, ServerConnectionStation, Value, ValueUpdateTransporter, ValueTransporter } from 'togii-server-connect'
+import { RenderRoot, RenderNodeOption, RenderNode, RenderOpCode } from 'togii-node'
 import * as WebSocket from 'ws'
 
 
@@ -13,7 +14,6 @@ class TimeValue implements Value<string>{
     }
     transportVal() { return this.value }
 }
-
 
 const val = R.val(new TimeValue(new Date()))
 
@@ -72,3 +72,52 @@ new ServerConnectionStation({
         color, time
     ]
 })
+
+class RenderRootServer extends RenderRoot implements Value<RenderNodeOption[]>{
+    version: string = (0).toString()
+
+    transporter = new ValueUpdateTransporter('app', this)
+
+    current: null | ({ code: RenderOpCode, input: any[] }[]) = null
+
+    emit(code: RenderOpCode, ...input: any[]) {
+        if (this.current) {
+            this.current.push({ code, input })
+        } else {
+            this.current = [{ code, input }]
+        }
+    }
+    transportVal() {
+        const trans = (ids: string[]): RenderNodeOption[] => {
+            return ids.map(id => {
+                const node = this.get(id)
+                const children = this.childrens.get(id)
+                return {
+                    ...node.option(),
+                    ...(children ? { children: trans(children) } : {})
+                }
+            })
+        }
+        return trans(this.roots)
+    }
+    [RenderOpCode.init](options: any[]) {
+        return super[RenderOpCode.init](options)
+    }
+    [RenderOpCode.insert](option: any, pos: { before?: string, parent?: string } = {}) {
+        return super[RenderOpCode.insert](option, pos)
+    }
+    [RenderOpCode.destory](nodeId: string) {
+        return super[RenderOpCode.destory](nodeId)
+    }
+    [RenderOpCode.cache](nodeId: string) {
+        return super[RenderOpCode.cache](nodeId)
+    }
+    [RenderOpCode.move](nodeId: string, pos: { before?: string, parent?: string } = {}) {
+        return super[RenderOpCode.move](nodeId, pos)
+    }
+    [RenderOpCode.update](option: any) {
+        return super[RenderOpCode.update](option)
+    }
+}
+
+console.log(RenderRootServer)
