@@ -1,6 +1,6 @@
 // 渲染节点类型
 export enum RenderNodeType {
-    TextNode, ElementNode,
+    TextNode, ElementNode, CommentNode
 }
 
 export abstract class RenderNode {
@@ -29,6 +29,16 @@ export class RenderTextNode extends RenderNode {
     }
 }
 
+
+export class RenderCommentNode extends RenderNode {
+    type: RenderNodeType.CommentNode = RenderNodeType.CommentNode
+    text: string = ''
+    option() {
+        const { nodeId: id, type, text } = this
+        return { id, type, text }
+    }
+}
+
 export class RenderElementNode extends RenderNode {
     type: RenderNodeType.ElementNode = RenderNodeType.ElementNode
     tag: string = 'div'
@@ -44,6 +54,10 @@ export class RenderElementNode extends RenderNode {
 export type RenderNodeOption = {
     id: string,
     type: RenderNodeType.TextNode,
+    text: string,
+} | {
+    id: string,
+    type: RenderNodeType.CommentNode,
     text: string,
 } | {
     id: string,
@@ -67,6 +81,9 @@ export class NodeOptionBuilder {
 
     static text(text: string, op: { id?: string } = {}) {
         return new NodeOptionBuilder({ text, ...op, type: RenderNodeType.TextNode })
+    }
+    static comment(text: string, op: { id?: string } = {}) {
+        return new NodeOptionBuilder({ text, ...op, type: RenderNodeType.CommentNode })
     }
 
     static element(tag: string, op: {
@@ -283,6 +300,9 @@ export class RenderRootClient extends RenderRoot {
         if (node instanceof RenderTextNode) {
             const real = RenderRootClient.document.createTextNode(node.text)
             this.realNodes.set(node, real)
+        } else if (node instanceof RenderCommentNode) {
+            const real = RenderRootClient.document.createComment(node.text)
+            this.realNodes.set(node, real)
         } else if (node instanceof RenderElementNode) {
             const real = RenderRootClient.document.createElement(node.tag)
             Object.assign(real.style, node.style)
@@ -290,7 +310,7 @@ export class RenderRootClient extends RenderRoot {
                 real.setAttribute(key, value)
             })
             this.realNodes.set(node, real)
-        }
+        } 
         return node
     }
     protected unlink(node: RenderNode) {
