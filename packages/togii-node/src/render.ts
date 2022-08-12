@@ -29,7 +29,6 @@ export class RenderTextNode extends RenderNode {
     }
 }
 
-
 export class RenderCommentNode extends RenderNode {
     type: RenderNodeType.CommentNode = RenderNodeType.CommentNode
     text: string = ''
@@ -278,6 +277,7 @@ export class RenderRoot {
             throw new Error('update: node is not exist!')
         this.nodes.set(node.nodeId, node)
     }
+
 }
 
 export class RenderRootClient extends RenderRoot {

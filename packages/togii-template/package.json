@@ -29,6 +29,7 @@
     "vite": "^2.3.4"
   },
   "dependencies": {
+    "togii-node": "^1.0.0",
     "togii-reactive": "^1.0.0"
   }
 }
