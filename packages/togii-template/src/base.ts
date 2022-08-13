@@ -1,12 +1,14 @@
 import { Ref } from "togii-reactive"
-import { RenderOpInput, RenderOpCode, RenderNodeType, RenderNodeOption } from 'togii-node'
+import { RenderNodeType, RenderNodeOption, RenderRoot, RenderOpCode } from 'togii-node'
 import { TemplateNodeRefContent, TemplateDecorator, TemplateNodeRefProp, TemplateNodeRefAttr } from "./decorator"
 
 // 模板节点基类
 export abstract class TemplateNode {
     id = Math.random().toString()
+    root?: RenderRoot
+    setRoot(root: RenderRoot) { this.root = root }
     abstract render(): RenderNodeOption
-    abstract update(deco: TemplateDecorator): RenderNodeOption
+    abstract update(deco: TemplateDecorator): void
 }
 
 // 模板节点群 (递归类型，用于处理 loop / cond 模板语法)
@@ -23,6 +25,7 @@ export class TemplateTextNode extends TemplateNode {
         if (content instanceof Ref) {
             this.content = content.val()
             this.deco = new TemplateNodeRefContent(content)
+            this.deco.decorate(this)
         } else {
             this.content = content
         }
@@ -31,9 +34,11 @@ export class TemplateTextNode extends TemplateNode {
     render(): RenderNodeOption {
         return { id: this.id, type: RenderNodeType.TextNode, text: this.content }
     }
-    update(): RenderNodeOption {
+    update() {
         this.content = this.deco ? this.deco.get() : this.content
-        return { id: this.id, type: RenderNodeType.TextNode, text: this.content }
+        const option: RenderNodeOption = { id: this.id, type: RenderNodeType.TextNode, text: this.content }
+
+        if (this.root) this.root[RenderOpCode.update](option)
     }
 }
 

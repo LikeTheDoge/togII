@@ -1,6 +1,6 @@
 import { R } from 'togii-reactive'
 import { Update, ServerConnectionStation, Value, ValueUpdateTransporter, ValueTransporter } from 'togii-server-connect'
-import { RenderRoot, RenderNodeOption, RenderNode, RenderOpCode } from 'togii-node'
+import { RenderRoot, RenderNodeOption, RenderOpCode } from 'togii-node'
 import * as WebSocket from 'ws'
 
 

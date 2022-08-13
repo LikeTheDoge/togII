@@ -17,7 +17,6 @@ export abstract class TemplateDecorator<T extends TemplateNode = TemplateNode> {
     }
 }
 
-
 export class TemplateNodeRefContent extends TemplateDecorator {
     content: Ref<string>
     watcher: Effect<string>

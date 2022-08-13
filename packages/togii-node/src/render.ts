@@ -9,6 +9,7 @@ export abstract class RenderNode {
     parent?: RenderElementNode
     root: RenderRoot
     nodeId: string = Math.random().toString()
+    sid: string = Math.random().toString()
     constructor(root: RenderRoot, id?: string) {
         this.root = root
         this.nodeId = id || this.nodeId
@@ -167,19 +168,24 @@ export class RenderRoot {
         this.roots = []
         this.cache = []
     }
-    protected prase(option: RenderNodeOption): RenderNode {
+    protected prase(option: RenderNodeOption, insert: boolean = true): RenderNode {
+        const root = insert ? this : new RenderRoot()
         if (!option || typeof option !== 'object')
             throw new Error('parse: node options error')
 
         if (option.type === RenderNodeType.ElementNode) {
             const { id, tag = 'div', attr = {}, style = {} } = option
-            return Object.assign(new RenderElementNode(this, id), {
+            return Object.assign(new RenderElementNode(root, id), {
                 tag, attr, style
             })
         }
         if (option.type === RenderNodeType.TextNode) {
             const { id, text = '' } = option
-            return Object.assign(new RenderTextNode(this, id), { text })
+            return Object.assign(new RenderTextNode(root, id), { text })
+        }
+        if (option.type === RenderNodeType.CommentNode) {
+            const { id, text = '' } = option
+            return Object.assign(new RenderCommentNode(root, id), { text })
         }
 
         throw new Error('parse: node type error')
@@ -228,6 +234,24 @@ export class RenderRoot {
             this.cache = this.cache.filter(id => id !== node.nodeId)
         }
     }
+    protected update(input: RenderNode) {
+
+        const node = this.nodes.get(input.nodeId)
+        if (!node) throw new Error('update: node is not exist!')
+
+        if (node.type === RenderNodeType.CommentNode) {
+            Object.assign(node, input)
+            return node
+        }
+
+        if (node.type === RenderNodeType.TextNode) {
+            Object.assign(node, input)
+            return node
+        }
+
+        throw new Error('update: node type error')
+
+    }
     [RenderOpCode.init](options: RenderNodeOption[]) {
         this.clear()
         const insertElement = (option: RenderNodeOption, parent?: string) => {
@@ -272,10 +296,9 @@ export class RenderRoot {
         this.insert(node, pos)
     }
     [RenderOpCode.update](...[option]: RenderOpInput<RenderOpCode.update>) {
-        const node = this.prase(option)
-        if (!this.nodes.has(node.nodeId))
-            throw new Error('update: node is not exist!')
-        this.nodes.set(node.nodeId, node)
+        const node = this.prase(option,false)
+        this.update(node)
+        return node
     }
 
 }
@@ -295,8 +318,8 @@ export class RenderRootClient extends RenderRoot {
         const children = Array.from(this.container.childNodes)
         children.forEach(child => this.container.removeChild(child))
     }
-    protected prase(option: RenderNodeOption) {
-        const node = super.prase(option)
+    protected prase(option: RenderNodeOption,insert?:boolean) {
+        const node = super.prase(option,insert)
         if (node instanceof RenderTextNode) {
             const real = RenderRootClient.document.createTextNode(node.text)
             this.realNodes.set(node, real)
@@ -310,7 +333,26 @@ export class RenderRootClient extends RenderRoot {
                 real.setAttribute(key, value)
             })
             this.realNodes.set(node, real)
-        } 
+        }
+        return node
+    }
+    protected update(input: RenderNode) {
+        const node = super.update(input)
+        const real = this.realNodes.get(node)
+
+        if (!real) throw new Error('real is not exist')
+        if (node instanceof RenderTextNode) {
+            (real as Text).textContent = node.text
+        } else if (node instanceof RenderCommentNode) {
+            (real as Comment).textContent = node.text
+        } else if (node instanceof RenderElementNode) {
+            // const real = RenderRootClient.document.createElement(node.tag)
+            // Object.assign(real.style, node.style)
+            // Object.entries(node.attr).forEach(([key, value]) => {
+            //     real.setAttribute(key, value)
+            // })
+            // this.realNodes.set(node, real)
+        }
         return node
     }
     protected unlink(node: RenderNode) {
@@ -350,5 +392,4 @@ export class RenderRootClient extends RenderRoot {
         parent_real.insertBefore(real, next_real || null)
 
     }
-
 }

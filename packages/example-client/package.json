@@ -14,7 +14,8 @@
     "react": "^17.0.2",
     "togii-client-connect": "^1.0.0",
     "togii-node": "^1.0.0",
-    "togii-reactive": "^1.0.0"
+    "togii-reactive": "^1.0.0",
+    "togii-template": "^1.0.0"
   },
   "devDependencies": {
     "@types/babel-core": "^6.25.7",

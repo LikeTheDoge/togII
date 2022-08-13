@@ -1,1 +1,1 @@
-export {};
+import './examples/template';
