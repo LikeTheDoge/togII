@@ -31,7 +31,6 @@ export class TemplateNodeRefContent extends TemplateDecorator {
 
     get(){return this.content.val()}
 }
-
 // 
 export class TemplateNodeRefAttr extends TemplateDecorator {
     value: Ref<string>
@@ -48,6 +47,24 @@ export class TemplateNodeRefAttr extends TemplateDecorator {
     }
     get(){
         return {filed:this.filed,value:this.value.val()}
+    }
+}
+// 
+export class TemplateNodeRefStyle extends TemplateDecorator {
+    value: Ref<string>
+    name: string
+    watcher: Effect<string>
+    constructor(name: string, value: Ref<string>) {
+        super()
+        this.name = name
+        this.value = value
+        this.watcher = new Effect<string>(() => {
+            this.update()
+        })
+        this.value.attach(this.watcher)
+    }
+    get(){
+        return {name:this.name,value:this.value.val()}
     }
 }
 

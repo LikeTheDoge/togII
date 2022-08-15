@@ -249,6 +249,22 @@ export class RenderRoot {
             return node
         }
 
+
+        if (node.type === RenderNodeType.ElementNode) {
+
+            Object.assign(
+                (node as RenderElementNode).attr,
+                (node as RenderElementNode).attr,
+            )
+            Object.assign(
+                (node as RenderElementNode).style,
+                (node as RenderElementNode).style,
+            )
+            return node
+        }
+
+
+
         throw new Error('update: node type error')
 
     }
@@ -296,7 +312,7 @@ export class RenderRoot {
         this.insert(node, pos)
     }
     [RenderOpCode.update](...[option]: RenderOpInput<RenderOpCode.update>) {
-        const node = this.prase(option,false)
+        const node = this.prase(option, false)
         this.update(node)
         return node
     }
@@ -318,8 +334,8 @@ export class RenderRootClient extends RenderRoot {
         const children = Array.from(this.container.childNodes)
         children.forEach(child => this.container.removeChild(child))
     }
-    protected prase(option: RenderNodeOption,insert?:boolean) {
-        const node = super.prase(option,insert)
+    protected prase(option: RenderNodeOption, insert?: boolean) {
+        const node = super.prase(option, insert)
         if (node instanceof RenderTextNode) {
             const real = RenderRootClient.document.createTextNode(node.text)
             this.realNodes.set(node, real)
@@ -346,12 +362,14 @@ export class RenderRootClient extends RenderRoot {
         } else if (node instanceof RenderCommentNode) {
             (real as Comment).textContent = node.text
         } else if (node instanceof RenderElementNode) {
-            // const real = RenderRootClient.document.createElement(node.tag)
-            // Object.assign(real.style, node.style)
-            // Object.entries(node.attr).forEach(([key, value]) => {
-            //     real.setAttribute(key, value)
-            // })
-            // this.realNodes.set(node, real)
+            Object.assign(
+                (real as HTMLElement).style,
+                (input as RenderElementNode).style
+            )
+            Object.entries((input as RenderElementNode).attr)
+                .forEach(([key, value]) => {
+                    (real as HTMLElement).setAttribute(key, value)
+                })
         }
         return node
     }

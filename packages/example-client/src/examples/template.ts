@@ -1,6 +1,6 @@
 import { RenderOpCode, RenderRootClient } from 'togii-node'
 import { R, Ref } from 'togii-reactive'
-import { TemplateTextNode } from 'togii-template'
+import { TemplateElementNode, TemplateTextNode } from 'togii-template'
 
 
 document.body.innerHTML = "<div id='app'></div>"
@@ -20,18 +20,30 @@ root[RenderOpCode.insert](text_hello.render(), {})
 
 setInterval(() => { time.update(new Date()) }, 1000)
 
+const input = (type: string | Ref<string>,color: string | Ref<string>) => new TemplateElementNode({ tag: 'input', attr: { type ,value:'测试按钮'}, style: {color} ,})
 
-interface Creater { }
-interface Input { }
-interface NodeType {}
+const type = R.val('text')
+const color = R.val('red')
+const ele_input = input(type,color)
 
-class Tag implements Creater { }
-class Attr implements Input { }
-class Children implements Input { }
-class Text implements NodeType{}
+ele_input.setRoot(root)
 
-type Dom = [Creater,...Input[]] | NodeType
+root[RenderOpCode.insert](ele_input.render(), {})
 
-const div = ()=> new Tag()
-const attr = (input?:{[key:string]:string})=> new Attr(...([input] as unknown as []))
-const $ = ()
+setInterval(() => { type.update(type.val() === 'text' ? 'button' : 'text') }, 1000)
+setInterval(() => { color.update(color.val() === 'red' ? 'blue' : 'red') }, 1000)
+
+
+// interface Creater { }
+// interface Input { }
+// interface NodeType {}
+
+// class Tag implements Creater { }
+// class Attr implements Input { }
+// class Children implements Input { }
+// class Text implements NodeType{}
+
+// type Dom = [Creater,...Input[]] | NodeType
+// const div = ()=> new Tag()
+// const attr = (input?:{[key:string]:string})=> new Attr(...([input] as unknown as []))
+// const $ = ()

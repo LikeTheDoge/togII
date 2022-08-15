@@ -1,6 +1,6 @@
 import { Ref } from "togii-reactive"
 import { RenderNodeType, RenderNodeOption, RenderRoot, RenderOpCode } from 'togii-node'
-import { TemplateNodeRefContent, TemplateDecorator, TemplateNodeRefProp, TemplateNodeRefAttr } from "./decorator"
+import { TemplateNodeRefContent, TemplateDecorator, TemplateNodeRefAttr, TemplateNodeRefStyle } from "./decorator"
 
 // 模板节点基类
 export abstract class TemplateNode {
@@ -68,38 +68,73 @@ export class TemplateCommentNode extends TemplateNode {
 export class TemplateElementNode extends TemplateNode {
     tag: string = 'div'
     attr: { [key: string]: string } = {}
-    prop: { [key: string]: any } = {}
+    style: { [key: string]: string } = {}
     children: TemplateChildrenGroup = new TemplateChildrenGroup()
-    decos: (TemplateNodeRefAttr | TemplateNodeRefProp)[] = []
+    decos: (TemplateNodeRefAttr | TemplateNodeRefStyle)[] = []
+
+    constructor({ tag = 'div', attr = {}, style = {} }: {
+        tag: string,
+        attr: { [key: string]: string | Ref<string> },
+        style: { [key: string]: string | Ref<string> },
+    }) {
+        super()
+
+        this.tag = tag
+        this.attr = {}
+        this.style = {}
+        Object.entries(attr).forEach(([key, value]) => {
+            if (typeof value === 'string') {
+                this.attr[key] = value
+            } else {
+                this.attr[key] = value.val()
+                const deco = new TemplateNodeRefAttr(key, value)
+                deco.decorate(this)
+                this.decos.push(deco)
+            }
+        })
+        Object.entries(style).forEach(([key, value]) => {
+            if (typeof value === 'string') {
+                this.style[key] = value
+            } else {
+                this.style[key] = value.val()
+                const deco = new TemplateNodeRefStyle(key, value)
+                deco.decorate(this)
+                this.decos.push(deco)
+            }
+        })
+    }
 
     render(): RenderNodeOption {
         return {
             tag: this.tag,
             id: this.id,
             type: RenderNodeType.ElementNode,
+            style: Object.assign({}, this.style),
             attr: Object.assign({}, this.attr),
-            style: {},
             children: []
         }
     }
 
-    update(deco: TemplateDecorator): RenderNodeOption {
-        if (deco instanceof TemplateNodeRefAttr) {
-            const { filed, value } = deco.get()
-            this.attr[filed] = value
-        }
-        if (deco instanceof TemplateNodeRefProp) {
-            const { filed, value } = deco.get()
-            this.prop[filed] = value
-        }
-        return {
+    update(deco: TemplateDecorator): void {
+        const option: RenderNodeOption = {
             tag: this.tag,
             id: this.id,
             type: RenderNodeType.ElementNode,
-            attr: Object.assign({}, this.attr),
+            attr: {},
             style: {},
             children: []
         }
+        if (deco instanceof TemplateNodeRefAttr) {
+            const { filed, value } = deco.get()
+            option.attr[filed] = value
+        }
+
+        if (deco instanceof TemplateNodeRefStyle) {
+            const { name, value } = deco.get()
+            option.style[name as any] = value
+        }
+
+        if (this.root) this.root[RenderOpCode.update](option)
     }
 
 }
@@ -118,7 +153,7 @@ export class TemplateCondGroup extends TemplateNodeGroup {
     target: TemplateNode = null as any
 
     render(): RenderNodeOption[] {
-        return [this.target.render()]
+        return this.cond.val() ? [this.target.render()] : []
     }
 }
 
@@ -127,8 +162,36 @@ export class TemplateLoopGroup<T> extends TemplateNodeGroup {
     array: Ref<T[]> = null as any
     node: (val: T, index: number) => (TemplateNode | TemplateNodeGroup) = null as any
     key: (val: T, index: number) => any = null as any
-
     current: (TemplateNode | TemplateNodeGroup)[] = []
+    currentKeyMap: Map<any, TemplateNode | TemplateNodeGroup> = new Map()
+
+
+    constructor(array: Ref<T[]>, { node, key }: {
+        key: (val: T, index: number) => any,
+        node: (val: T, index: number) => (TemplateNode | TemplateNodeGroup),
+    }) {
+        super()
+        this.array = array
+        this.key = key
+        this.node = node
+        this.updateCurrent()
+    }
+
+    private updateCurrent() {
+        const newCurrentKeyMap: Map<any, TemplateNode | TemplateNodeGroup> = new Map()
+        const newCurrent = this.array.val().map((val, index) => {
+            const key = this.key(val, index)
+            const template = this.currentKeyMap.get(key)
+                ?? this.node(val, index)
+
+            newCurrentKeyMap.set(key, template)
+            return template
+        })
+        this.currentKeyMap = newCurrentKeyMap
+        this.current = newCurrent
+    }
+
+
     render() {
         return this.current.flatMap(v => v instanceof TemplateNode ? [v.render()] : v.render())
     }
