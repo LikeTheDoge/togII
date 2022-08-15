@@ -137,9 +137,9 @@ export enum RenderOpCode {
 
 export type RenderOpInput<T extends RenderOpCode> =
     T extends RenderOpCode.init ? [RenderNodeOption[]] :
-    T extends RenderOpCode.insert ? [RenderNodeOption, { before?: string, parent?: string }] :
+    T extends RenderOpCode.insert ? [RenderNodeOption, { before?: string, parent?: string, after?: string }] :
     T extends RenderOpCode.cache ? [string] :
-    T extends RenderOpCode.move ? [string, { before?: string, parent?: string }] :
+    T extends RenderOpCode.move ? [string, { before?: string, parent?: string, after?: string }] :
     T extends RenderOpCode.destory ? [string] :
     T extends RenderOpCode.update ? [RenderNodeOption]
     : never
@@ -191,7 +191,7 @@ export class RenderRoot {
         throw new Error('parse: node type error')
     }
     // 将节点插入 node 树中
-    protected insert(node: RenderNode, pos: { before?: string, parent?: string }) {
+    protected insert(node: RenderNode, pos: { before?: string, parent?: string, after?: string }) {
         if (pos.before) {
             if (!this.nodes.has(pos.before))
                 throw new Error('error before id !!!')
@@ -199,6 +199,22 @@ export class RenderRoot {
             if (pid && (this.childrens.get(pid) || []).find(v => v === pos.before)) {
                 this.childrens.set(pid, (this.childrens.get(pid) || [])
                     .flatMap(v => v === pos.before ? [node.nodeId, v] : [v])
+                )
+                this.parent.set(node.nodeId, pid)
+                this.nodes.set(node.nodeId, node)
+            } else if (this.roots.find(v => v == pos.before)) {
+                this.roots = this.roots.flatMap(v => v === pos.before ? [node.nodeId, v] : [v])
+                this.nodes.set(node.nodeId, node)
+            } else {
+                throw new Error('error before parent!!!')
+            }
+        } else if (pos.after) {
+            if (!this.nodes.has(pos.after))
+                throw new Error('error after id !!!')
+            const pid = this.parent.get(pos.after)
+            if (pid && (this.childrens.get(pid) || []).find(v => v === pos.before)) {
+                this.childrens.set(pid, (this.childrens.get(pid) || [])
+                    .flatMap(v => v === pos.before ? [v, node.nodeId] : [v])
                 )
                 this.parent.set(node.nodeId, pid)
                 this.nodes.set(node.nodeId, node)

@@ -1,4 +1,4 @@
-import { Ref } from "togii-reactive"
+import { Effect, Ref } from "togii-reactive"
 import { RenderNodeType, RenderNodeOption, RenderRoot, RenderOpCode } from 'togii-node'
 import { TemplateNodeRefContent, TemplateDecorator, TemplateNodeRefAttr, TemplateNodeRefStyle } from "./decorator"
 
@@ -14,6 +14,8 @@ export abstract class TemplateNode {
 // 模板节点群 (递归类型，用于处理 loop / cond 模板语法)
 export abstract class TemplateNodeGroup {
     abstract render(): RenderNodeOption[]
+    root?: RenderRoot
+    setRoot(root: RenderRoot) { this.root = root }
 }
 
 // 模板文字节点
@@ -111,7 +113,7 @@ export class TemplateElementNode extends TemplateNode {
             type: RenderNodeType.ElementNode,
             style: Object.assign({}, this.style),
             attr: Object.assign({}, this.attr),
-            children: []
+            children: this.children.render()
         }
     }
 
@@ -164,7 +166,7 @@ export class TemplateLoopGroup<T> extends TemplateNodeGroup {
     key: (val: T, index: number) => any = null as any
     current: (TemplateNode | TemplateNodeGroup)[] = []
     currentKeyMap: Map<any, TemplateNode | TemplateNodeGroup> = new Map()
-
+    watcher:Effect<T[]>
 
     constructor(array: Ref<T[]>, { node, key }: {
         key: (val: T, index: number) => any,
@@ -175,6 +177,11 @@ export class TemplateLoopGroup<T> extends TemplateNodeGroup {
         this.key = key
         this.node = node
         this.updateCurrent()
+        
+        this.watcher = new Effect<any>(() => {
+            this.update()
+        })
+        this.array.attach(this.watcher)
     }
 
     private updateCurrent() {
@@ -194,6 +201,11 @@ export class TemplateLoopGroup<T> extends TemplateNodeGroup {
 
     render() {
         return this.current.flatMap(v => v instanceof TemplateNode ? [v.render()] : v.render())
+    }
+
+    update(){
+        // this.updateCurrent()
+
     }
 }
 
